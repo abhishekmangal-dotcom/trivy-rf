@@ -40,7 +40,19 @@ func rpmDistTag(ver string) (tag, num string) {
 	return last[1], last[2]
 }
 
-var rfMarkerRe = regexp.MustCompile(`[0-9+~.]rf(?:ubu[a-z]*|debian)?(?:[^a-z]|$)`)
+// rfMarkerRe matches a RapidFort rebuild marker in a dpkg version; a stock
+// distribution build never carries one. Three parts, left to right:
+//
+//	[0-9+~.]            Separator before it, so "rf" counts only as its own
+//	                    revision element, never inside a word ("1.0-1surf1").
+//	rf(?:ubu(?:ntu)?)?  The marker. The feeds publish "rf", "rfubu" and
+//	                    "rfubuntu" only.
+//	(?:[^a-z]|$)        Digit, separator or end after it, so a longer word
+//	                    cannot match on its "rf" prefix ("3rfubujl").
+//
+//	match:    0:2.46-10rfubu  0:3.3.3-1rfubuntu0.24.04.1  0:2.43-14.rf
+//	no match: 7.81.0-1ubuntu1.15  1.0-1surf1  0:1.2.3-3rfubujl
+var rfMarkerRe = regexp.MustCompile(`[0-9+~.]rf(?:ubu(?:ntu)?)?(?:[^a-z]|$)`)
 
 // dpkgHasRfMarker reports whether a Debian/Ubuntu version string carries a
 // RapidFort rebuild marker — the same signal the feed annotator writes as the
@@ -108,8 +120,9 @@ func NewScanner(baseOS ftypes.OSType) *Scanner {
 }
 
 // familyEcosystems maps each OS RapidFort curates to the ecosystem its
-// advisories are bucketed under. Keep it aligned with newBucket in trivy-db's
-// rapidfort vulnsrc, which decides the same thing on the write side.
+// advisories are bucketed under. The RapidFort vulnsrc in trivy-db picks the
+// same ecosystem per OS when it writes those buckets, so the two mappings have
+// to stay in step.
 var familyEcosystems = map[ftypes.OSType]ecosystem.Type{
 	ftypes.Ubuntu: ecosystem.Ubuntu,
 	ftypes.Debian: ecosystem.Debian,
@@ -152,6 +165,10 @@ func (s *Scanner) route(installedVer, osVer string) (ecosystem.Type, string) {
 	case "rf":
 		return eco, ""
 	case "el", "amzn":
+		// Use the package's own dist-tag major, not osVer: an .el8
+		// package inside a RHEL 9 image belongs to the Red Hat 8 bucket.
+		// cmp.Or supplies osVer when the tag carries no major at all
+		// ("7.76.1-26.el"), since that names no release of its own.
 		return eco, cmp.Or(num, osVer)
 	default:
 		// An untagged RPM names no distribution, so it is treated as a build of

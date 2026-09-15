@@ -1507,7 +1507,9 @@ func TestScanner_Detect(t *testing.T) {
 			// A bare "+rf.N" revision carries no "rfubu" at all, yet is still a
 			// RapidFort rebuild and must reach the same bucket — the case an
 			// "rfubu" substring check would have sent to the distro bucket.
-			name:   "Debian: bare +rf revision routes to the rapidfort debian bucket",
+			// Versions are the real rf-perl range, which fixes a "+rf" install
+			// with a ".rf" build.
+			name:   "Debian: +rf revision routes to the rapidfort debian bucket",
 			baseOS: ftypes.Debian,
 			fixtures: []string{
 				"testdata/fixtures/rapidfort.yaml",
@@ -1518,9 +1520,9 @@ func TestScanner_Detect(t *testing.T) {
 				pkgs: []ftypes.Package{
 					{
 						Name:       "rf-perl",
-						Version:    "0:5.38.2-1+rf.0",
+						Version:    "0:5.40.1-12+rf.0",
 						SrcName:    "rf-perl",
-						SrcVersion: "0:5.38.2-1+rf.0",
+						SrcVersion: "0:5.40.1-12+rf.0",
 					},
 				},
 			},
@@ -1528,8 +1530,8 @@ func TestScanner_Detect(t *testing.T) {
 				{
 					PkgName:          "rf-perl",
 					VulnerabilityID:  "CVE-2024-56406",
-					InstalledVersion: "0:5.38.2-1+rf.0",
-					FixedVersion:     "0:5.40.1-10.rf",
+					InstalledVersion: "0:5.40.1-12+rf.0",
+					FixedVersion:     "0:5.42.3-11.rf",
 					SeveritySource:   "rapidfort",
 					DataSource: &dbTypes.DataSource{
 						ID:     "rapidfort",
@@ -1895,6 +1897,8 @@ func TestRpmDistTag(t *testing.T) {
 		{ver: "7.76.1-26.fc43", wantTag: "fc", wantNum: "43"},
 		{ver: "7.76.1-20.rf1", wantTag: "rf", wantNum: "1"},
 		{ver: "7.76.1-26.rf", wantTag: "rf", wantNum: ""},
+		// A dist tag with no major: route falls back to the image's own version.
+		{ver: "7.76.1-26.el", wantTag: "el", wantNum: ""},
 		// The last match wins, so a trailing tag beats an earlier one and beats
 		// an el/fc/rf substring caught inside another word.
 		{ver: "1.0-1.rfc3339.el9", wantTag: "el", wantNum: "9"},
@@ -1940,18 +1944,20 @@ func TestDpkgHasRfMarker(t *testing.T) {
 		ver  string
 		want bool
 	}{
-		// Every rebuild-revision shape the RapidFort dpkg feeds publish.
+		// The three spellings the RapidFort dpkg feeds publish: "rfubu",
+		// "rfubuntu" and a bare "rf". Versions taken from the live feed.
 		{name: "rfubu suffix", ver: "0:2.46-10rfubu", want: true},
 		{name: "rfubu with point release", ver: "0:3.12.10-1rfubu.1", want: true},
 		{name: "rfubu with trailing rf build", ver: "0:2.43.0-11rfubu7.2+rf.1", want: true},
+		{name: "rfubu followed by a word boundary", ver: "0:3.6.1-10rfubu-go.1.23.6+rf.1", want: true},
 		{name: "rfubuntu spelling", ver: "0:1.2.3-12rfubuntu1", want: true},
-		{name: "rfubu with a build suffix", ver: "0:1.2.3-3rfubujl", want: true},
-		// Debian-flavored and bare-rf revisions: missed by an "rfubu" substring
-		// check, which is why the marker is matched by pattern instead.
-		{name: "rfdebian spelling", ver: "0:3.2.1-4rfdebian~rf.1", want: true},
+		{name: "rfubuntu with a dotted release", ver: "0:3.3.3-1rfubuntu0.24.04.1", want: true},
+		// The Debian feed spells its rebuilds "rfubu" too, and also ships bare
+		// "rf" revisions, so the marker cannot be a single fixed substring.
+		{name: "rfubu on the debian feed", ver: "0:1.19+dfsg-12rfubu", want: true},
 		{name: "bare rf after plus", ver: "0:3.2.2-1+rf.2", want: true},
-		{name: "bare rf after tilde", ver: "0:1.2.3-1~rf.1", want: true},
-		{name: "bare rf as dotted suffix", ver: "0:1.13-10.rf", want: true},
+		{name: "bare rf after tilde", ver: "0:3.0.13-1rfubuntu3.1~rf.1", want: true},
+		{name: "bare rf as dotted suffix", ver: "0:2.43-14.rf", want: true},
 		{name: "bare rf on perl", ver: "0:5.40.1-10.rf", want: true},
 
 		// Plain distro revisions must stay on the distro track: a false positive
@@ -1961,9 +1967,16 @@ func TestDpkgHasRfMarker(t *testing.T) {
 		{name: "debian backport", ver: "2.4.0-1~bpo11+1", want: false},
 		{name: "ubuntu security revision", ver: "0:2.46-3ubuntu2", want: false},
 		{name: "empty version", ver: "", want: false},
-		// "rf" inside a longer word is not a marker.
+		{name: "debian security revision", ver: "0:1.26.2-3+deb13u1", want: false},
+		// "rf" inside a longer word is not a marker: it must both start and end
+		// an element of the revision.
 		{name: "rfc in an upstream version", ver: "1.0-2.rfc3339", want: false},
 		{name: "rf preceded by a letter", ver: "1.0-1surf1", want: false},
+		// Spellings the feeds do not publish must not match on their "rf"
+		// prefix — only "rfubu" and "rfubuntu" are real distro forms.
+		{name: "rfubu run on into a longer word", ver: "0:1.2.3-3rfubujl", want: false},
+		{name: "rfdebian is not a published spelling", ver: "0:3.2.1-4rfdebian", want: false},
+		{name: "rfdeb is not a published spelling", ver: "0:3.2.1-4rfdebjl", want: false},
 	}
 
 	for _, tt := range tests {

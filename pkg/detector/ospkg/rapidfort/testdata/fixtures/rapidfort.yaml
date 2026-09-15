@@ -3,13 +3,14 @@
 # bucket, alongside Ubuntu, Debian and Alpine. Each bucket holds a single
 # distribution's ranges.
 #
-# RapidFort's own rebuilds (rf) are split one bucket per feed — "rapidfort
-# redhat", "rapidfort oracle", "rapidfort rocky", "rapidfort alma", "rapidfort
-# amazon", "rapidfort ubuntu" — so that RPM and dpkg ranges never share a bucket
-# (the wrong comparator would read them) and so feeds that publish differing
-# ranges for the same rebuild cannot overwrite each other. Every rf bucket below
-# carries a different fix version for rf-curl, so a test that lands in the wrong
-# one fails on the reported FixedVersion instead of passing by accident.
+# RapidFort's own rebuilds (rf) are split one bucket per feed — "rapidfort Red
+# Hat", "rapidfort Oracle Linux", "rapidfort rocky", "rapidfort alma", "rapidfort
+# amazon linux", "rapidfort debian", "rapidfort ubuntu" — so that RPM and dpkg
+# ranges never share a bucket (the wrong comparator would read them) and so
+# feeds that publish differing ranges for the same rebuild cannot overwrite each
+# other. Every rf bucket below carries a different fix version, so a test that
+# lands in the wrong one fails on the reported FixedVersion instead of passing
+# by accident.
 - bucket: rapidfort ubuntu 22.04
   pairs:
     - bucket: curl
@@ -286,15 +287,18 @@
             PatchedVersions:
               - "0:2.48.2-0rfubu"
             Severity: 2
-    # A bare "+rf.N" revision — no "rfubu" anywhere — must route here too.
+    # A real rf-perl range from the Debian feed: the rebuild is introduced as a
+    # "+rf" revision and fixed as a ".rf" build. Neither spelling contains
+    # "rfubu", and the ".rf" one contains no "+rf" either, so both shapes have
+    # to reach this bucket.
     - bucket: rf-perl
       pairs:
         - key: CVE-2024-56406
           value:
             VulnerableVersions:
-              - ">=0:0, <0:5.40.1-10.rf"
+              - ">=0:5.40.1-12+rf.0, <0:5.42.3-11.rf"
             PatchedVersions:
-              - "0:5.40.1-10.rf"
+              - "0:5.42.3-11.rf"
             Severity: 2
 - bucket: rapidfort ubuntu
   pairs:
