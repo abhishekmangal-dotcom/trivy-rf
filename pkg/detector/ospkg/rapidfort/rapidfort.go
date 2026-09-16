@@ -45,13 +45,14 @@ func rpmDistTag(ver string) (tag, num string) {
 //
 //	[0-9+~.]            Separator before it, so "rf" counts only as its own
 //	                    revision element, never inside a word ("1.0-1surf1").
-//	rf(?:ubu(?:ntu)?)?  The marker. The feeds publish "rf", "rfubu" and
-//	                    "rfubuntu" only.
-//	(?:[^a-z]|$)        Digit, separator or end after it, so a longer word
-//	                    cannot match on its "rf" prefix ("3rfubujl").
+//	rf(?:ubu[a-z]*)?    The marker: bare "rf", or "ubu" plus an optional
+//	                    variant suffix ("rfubu", "rfubuntu", "rfubujl").
+//	(?:[^a-z]|$)        Digit, separator or end after it, so a spelling with
+//	                    no "ubu" cannot match on its "rf" prefix ("rfdebian").
 //
 //	match:    0:2.46-10rfubu  0:3.3.3-1rfubuntu0.24.04.1  0:2.43-14.rf
-//	no match: 7.81.0-1ubuntu1.15  1.0-1surf1  0:1.2.3-3rfubujl
+//	          8.18.0-11rfubujl
+//	no match: 7.81.0-1ubuntu1.15  1.0-1surf1  0:3.2.1-4rfdebian
 var rfMarkerRe = regexp.MustCompile(`[0-9+~.]rf(?:ubu[a-z]*)?(?:[^a-z]|$)`)
 
 // dpkgHasRfMarker reports whether a Debian/Ubuntu version string carries a
