@@ -52,7 +52,7 @@ func rpmDistTag(ver string) (tag, num string) {
 //
 //	match:    0:2.46-10rfubu  0:3.3.3-1rfubuntu0.24.04.1  0:2.43-14.rf
 //	no match: 7.81.0-1ubuntu1.15  1.0-1surf1  0:1.2.3-3rfubujl
-var rfMarkerRe = regexp.MustCompile(`[0-9+~.]rf(?:ubu(?:ntu)?)?(?:[^a-z]|$)`)
+var rfMarkerRe = regexp.MustCompile(`[0-9+~.]rf(?:ubu[a-z]*)?(?:[^a-z]|$)`)
 
 // dpkgHasRfMarker reports whether a Debian/Ubuntu version string carries a
 // RapidFort rebuild marker — the same signal the feed annotator writes as the
