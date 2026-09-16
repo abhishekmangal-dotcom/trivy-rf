@@ -1972,9 +1972,9 @@ func TestDpkgHasRfMarker(t *testing.T) {
 		// an element of the revision.
 		{name: "rfc in an upstream version", ver: "1.0-2.rfc3339", want: false},
 		{name: "rf preceded by a letter", ver: "1.0-1surf1", want: false},
-		// Spellings the feeds do not publish must not match on their "rf"
-		// prefix — only "rfubu" and "rfubuntu" are real distro forms.
-		{name: "rfubu run on into a longer word", ver: "0:1.2.3-3rfubujl", want: false},
+		// "ubu" takes a variant suffix: curl and libxml2 ship "rfubujl".
+		{name: "rfubu with a variant suffix", ver: "0:1.2.3-3rfubujl", want: true},
+		// A spelling with no "ubu" must not match on its "rf" prefix.
 		{name: "rfdebian is not a published spelling", ver: "0:3.2.1-4rfdebian", want: false},
 		{name: "rfdeb is not a published spelling", ver: "0:3.2.1-4rfdebjl", want: false},
 	}
